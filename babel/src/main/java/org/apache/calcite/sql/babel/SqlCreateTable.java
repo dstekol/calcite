@@ -41,7 +41,7 @@ public class SqlCreateTable extends SqlCreate
   public final SqlIdentifier name;
   public final SetType setType;
   public final Volatility volatility;
-  public final List<SqlCreateAttribute> tableAttributes;
+  public final List<SqlTableAttribute> tableAttributes;
   public final SqlNodeList columnList;
   public final SqlNode query;
   public final WithDataType withData;
@@ -54,7 +54,7 @@ public class SqlCreateTable extends SqlCreate
 
   public SqlCreateTable(SqlParserPos pos, SqlCreateSpecifier createSpecifier,
       SetType setType, Volatility volatility, boolean ifNotExists,
-      SqlIdentifier name, List<SqlCreateAttribute> tableAttributes,
+      SqlIdentifier name, List<SqlTableAttribute> tableAttributes,
       SqlNodeList columnList, SqlNode query, WithDataType withData,
       SqlPrimaryIndex primaryIndex, OnCommitType onCommitType) {
     this(pos, createSpecifier, setType, volatility, ifNotExists,
@@ -114,7 +114,7 @@ public class SqlCreateTable extends SqlCreate
     name.unparse(writer, leftPrec, rightPrec);
     if (tableAttributes != null) {
       SqlWriter.Frame frame = writer.startList("", "");
-      for (SqlCreateAttribute a : tableAttributes) {
+      for (SqlTableAttribute a : tableAttributes) {
         writer.sep(",", true);
         a.unparse(writer, 0, 0);
       }
