@@ -162,8 +162,8 @@ public class SqlCreateTable extends SqlCreate
     case PRESERVE:
       writer.keyword("ON COMMIT PRESERVE ROWS");
       break;
-    case RELEASE:
-      writer.keyword("ON COMMIT RELEASE ROWS");
+    case DELETE:
+      writer.keyword("ON COMMIT DELETE ROWS");
       break;
     default:
       break;

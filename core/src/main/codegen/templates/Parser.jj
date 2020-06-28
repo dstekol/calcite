@@ -4033,7 +4033,15 @@ String Scope() :
 {
 }
 {
-    ( <SYSTEM> | <SESSION> ) { return token.image.toUpperCase(Locale.ROOT); }
+    (
+        <SYSTEM>
+    |
+        <SESSION>
+<#if parser.allowAlterTable>
+    |
+        <TABLE>
+</#if>
+    ) { return token.image.toUpperCase(Locale.ROOT); }
 }
 
 <#if parser.createStatementParserMethods?size != 0>

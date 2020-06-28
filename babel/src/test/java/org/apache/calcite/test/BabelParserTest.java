@@ -341,9 +341,9 @@ class BabelParserTest extends SqlParserTest {
     sql(sql).ok(expected);
   }
 
-  @Test public void testCreateTableOnCommitReleaseRows() {
-    final String sql = "create table foo (bar int) on commit release rows";
-    final String expected = "CREATE TABLE `FOO` (`BAR` INTEGER) ON COMMIT RELEASE ROWS";
+  @Test public void testCreateTableOnCommitDeleteRows() {
+    final String sql = "create table foo (bar int) on commit delete rows";
+    final String expected = "CREATE TABLE `FOO` (`BAR` INTEGER) ON COMMIT DELETE ROWS";
     sql(sql).ok(expected);
   }
 
@@ -1901,5 +1901,47 @@ class BabelParserTest extends SqlParserTest {
     final String sql = "select top 200 ^percent^ bar from foo";
     final String expected = "(?s).*Numeric literal.*out of range.*";
     sql(sql).fails(expected);
+  }
+
+  @Test void testAlterSingleTableOption() {
+    final String sql = "alter table foo, no fallback";
+    final String expected = "ALTER TABLE `FOO`, NO FALLBACK";
+    sql(sql).ok(expected);
+  }
+
+  @Test void testAlterSingleTableOptionWithValue() {
+    final String sql = "alter table foo, freespace = 5";
+    final String expected = "ALTER TABLE `FOO`, FREESPACE = 5";
+    sql(sql).ok(expected);
+  }
+
+  @Test void testAlterMultipleTableOptions() {
+    final String sql = "alter table foo, no fallback, no before journal";
+    final String expected = "ALTER TABLE `FOO`, NO FALLBACK, NO BEFORE JOURNAL";
+    sql(sql).ok(expected);
+  }
+
+  @Test void testAlterChecksumWithImmediate() {
+    final String sql = "alter table foo, checksum = default immediate";
+    final String expected = "ALTER TABLE `FOO`, CHECKSUM = DEFAULT IMMEDIATE";
+    sql(sql).ok(expected);
+  }
+
+  @Test void testAlterDataBlockSizeWithImmediate() {
+    final String sql = "alter table foo, minimum datablocksize immediate";
+    final String expected = "ALTER TABLE `FOO`, MINIMUM DATABLOCKSIZE IMMEDIATE";
+    sql(sql).ok(expected);
+  }
+
+  @Test void testAlterDataBlockSizeWithValueAndImmediate() {
+    final String sql = "alter table foo, datablocksize = 5 immediate";
+    final String expected = "ALTER TABLE `FOO`, DATABLOCKSIZE = 5 BYTES IMMEDIATE";
+    sql(sql).ok(expected);
+  }
+
+  @Test void testAlterFreespaceDefault() {
+    final String sql = "alter table foo, default freespace";
+    final String expected = "ALTER TABLE `FOO`, DEFAULT FREESPACE";
+    sql(sql).ok(expected);
   }
 }

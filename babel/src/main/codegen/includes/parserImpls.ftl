@@ -111,7 +111,7 @@ OnCommitType OnCommitTypeOpt() :
         (
             <PRESERVE> { onCommitType = OnCommitType.PRESERVE; }
         |
-            <RELEASE> { onCommitType = OnCommitType.RELEASE; }
+            <DELETE> { onCommitType = OnCommitType.DELETE; }
         )
         <ROWS>
     |
@@ -305,7 +305,7 @@ void ColumnWithType(List<SqlNode> list) :
     }
 }
 
-SqlTableAttribute CreateTableAttributeFallback() :
+SqlTableAttribute TableAttributeFallback() :
 {
     boolean no = false;
     boolean protection = false;
@@ -317,7 +317,7 @@ SqlTableAttribute CreateTableAttributeFallback() :
     { return new SqlTableAttributeFallback(no, protection, getPos()); }
 }
 
-SqlTableAttribute CreateTableAttributeJournalTable() :
+SqlTableAttribute TableAttributeJournalTable() :
 {
     final SqlIdentifier id;
 }
@@ -326,7 +326,7 @@ SqlTableAttribute CreateTableAttributeJournalTable() :
     { return new SqlTableAttributeJournalTable(id, getPos()); }
 }
 
-SqlTableAttribute CreateTableAttributeMap() :
+SqlTableAttribute TableAttributeMap() :
 {
     final SqlIdentifier id;
 }
@@ -336,7 +336,7 @@ SqlTableAttribute CreateTableAttributeMap() :
 }
 
 // FREESPACE attribute can take in decimals but should be truncated to an integer.
-SqlTableAttribute CreateTableAttributeFreeSpace() :
+SqlTableAttribute TableAttributeFreeSpace() :
 {
     SqlLiteral tempNumeric;
     int freeSpaceValue;
@@ -354,7 +354,42 @@ SqlTableAttribute CreateTableAttributeFreeSpace() :
     { return new SqlTableAttributeFreeSpace(freeSpaceValue, percent, getPos()); }
 }
 
-SqlTableAttribute CreateTableAttributeIsolatedLoading() :
+/**
+ * Parses FREESPACE attribute in ALTER queries.
+ * Can either specify a value, or DEFAULT FREESPACE.
+ */
+SqlTableAttribute AlterTableAttributeFreeSpace() :
+{
+    SqlLiteral tempNumeric;
+    int freeSpaceValue;
+    boolean percent = false;
+    boolean isDefault = false;
+}
+{
+    (
+        <FREESPACE> <EQ> tempNumeric = UnsignedNumericLiteral() {
+            freeSpaceValue = tempNumeric.getValueAs(Integer.class);
+            if (freeSpaceValue < 0 || freeSpaceValue > 75) {
+                throw SqlUtil.newContextException(getPos(),
+                    RESOURCE.numberLiteralOutOfRange(String.valueOf(freeSpaceValue)));
+            }
+        }
+        [ <PERCENT> { percent = true; } ]
+
+    |
+        <DEFAULT_> <FREESPACE>
+        {
+            freeSpaceValue = 0;
+            isDefault = true;
+        }
+    )
+    {
+        return new SqlAlterTableAttributeFreeSpace(freeSpaceValue, percent,
+            getPos(), isDefault);
+    }
+}
+
+SqlTableAttribute TableAttributeIsolatedLoading() :
 {
     boolean nonLoadIsolated = false;
     boolean concurrent = false;
@@ -378,7 +413,7 @@ SqlTableAttribute CreateTableAttributeIsolatedLoading() :
     { return new SqlTableAttributeIsolatedLoading(nonLoadIsolated, concurrent, operationLevel, getPos()); }
 }
 
-SqlTableAttribute CreateTableAttributeJournal() :
+SqlTableAttribute TableAttributeJournal() :
 {
   JournalType journalType;
   JournalModifier journalModifier;
@@ -411,7 +446,7 @@ SqlTableAttribute CreateTableAttributeJournal() :
     { return new SqlTableAttributeJournal(journalType, journalModifier, getPos()); }
 }
 
-SqlTableAttribute CreateTableAttributeDataBlockSize() :
+SqlTableAttribute TableAttributeDataBlockSize() :
 {
     DataBlockModifier modifier = null;
     DataBlockUnitSize unitSize;
@@ -438,7 +473,36 @@ SqlTableAttribute CreateTableAttributeDataBlockSize() :
     { return new SqlTableAttributeDataBlockSize(modifier, unitSize, dataBlockSize, getPos()); }
 }
 
-SqlTableAttribute CreateTableAttributeMergeBlockRatio() :
+SqlTableAttribute AlterTableAttributeDataBlockSize() :
+{
+    DataBlockModifier modifier = null;
+    DataBlockUnitSize unitSize;
+    SqlLiteral dataBlockSize = null;
+    boolean immediate = false;
+}
+{
+    (
+        (
+            ( <MINIMUM> | <MIN> ) { modifier = DataBlockModifier.MINIMUM; }
+        |
+            ( <MAXIMUM> | <MAX> ) { modifier = DataBlockModifier.MAXIMUM; }
+        |
+            <DEFAULT_> { modifier = DataBlockModifier.DEFAULT; }
+        )
+        <DATABLOCKSIZE> { unitSize = DataBlockUnitSize.BYTES; }
+    |
+        <DATABLOCKSIZE> <EQ> dataBlockSize = UnsignedNumericLiteral()
+        (
+            ( <KILOBYTES> | <KBYTES> ) { unitSize = DataBlockUnitSize.KILOBYTES; }
+        |
+            [ <BYTES> ] { unitSize = DataBlockUnitSize.BYTES; }
+        )
+    )
+    [ <IMMEDIATE> { immediate = true; } ]
+    { return new SqlAlterTableAttributeDataBlockSize(modifier, unitSize, dataBlockSize, getPos(), immediate); }
+}
+
+SqlTableAttribute TableAttributeMergeBlockRatio() :
 {
     MergeBlockRatioModifier modifier = MergeBlockRatioModifier.UNSPECIFIED;
     int ratio = 1;
@@ -466,7 +530,7 @@ SqlTableAttribute CreateTableAttributeMergeBlockRatio() :
     }
 }
 
-SqlTableAttribute CreateTableAttributeChecksum() :
+SqlTableAttribute TableAttributeChecksum() :
 {
     ChecksumEnabled checksumEnabled;
 }
@@ -482,7 +546,28 @@ SqlTableAttribute CreateTableAttributeChecksum() :
     { return new SqlTableAttributeChecksum(checksumEnabled, getPos()); }
 }
 
-SqlTableAttribute CreateTableAttributeBlockCompression() :
+SqlTableAttribute AlterTableAttributeChecksum() :
+{
+    ChecksumEnabled checksumEnabled;
+    boolean immediate = false;
+}
+{
+    <CHECKSUM> <EQ>
+    (
+        <DEFAULT_> { checksumEnabled = ChecksumEnabled.DEFAULT; }
+    |
+        <ON> { checksumEnabled = ChecksumEnabled.ON; }
+    |
+        <OFF> { checksumEnabled = ChecksumEnabled.OFF; }
+    )
+    [ <IMMEDIATE> { immediate = true; } ]
+    {
+        return new SqlAlterTableAttributeChecksum(checksumEnabled,
+            getPos(), immediate);
+    }
+}
+
+SqlTableAttribute TableAttributeBlockCompression() :
 {
     BlockCompressionOption blockCompressionOption;
 }
@@ -500,7 +585,7 @@ SqlTableAttribute CreateTableAttributeBlockCompression() :
     { return new SqlTableAttributeBlockCompression(blockCompressionOption, getPos()); }
 }
 
-SqlTableAttribute CreateTableAttributeLog() :
+SqlTableAttribute TableAttributeLog() :
 {
     boolean loggingEnabled = true;
 }
@@ -511,7 +596,6 @@ SqlTableAttribute CreateTableAttributeLog() :
     }
 }
 
-<<<<<<< HEAD
 SqlColumnAttribute ColumnAttributeDateFormat() :
 {
     SqlNode formatString = null;
@@ -524,10 +608,7 @@ SqlColumnAttribute ColumnAttributeDateFormat() :
     }
 }
 
-List<SqlCreateAttribute> CreateTableAttributes() :
-=======
 List<SqlTableAttribute> CreateTableAttributes() :
->>>>>>> Changed SqlCreateAttribute to SqlTableAttribute.
 {
     final List<SqlTableAttribute> list = new ArrayList<SqlTableAttribute>();
     SqlTableAttribute e;
@@ -537,27 +618,27 @@ List<SqlTableAttribute> CreateTableAttributes() :
     (
         <COMMA>
         (
-            e = CreateTableAttributeMap()
+            e = TableAttributeMap()
         |
-            e = CreateTableAttributeFallback()
+            e = TableAttributeFallback()
         |
-            e = CreateTableAttributeJournalTable()
+            e = TableAttributeJournalTable()
         |
-            e = CreateTableAttributeFreeSpace()
+            e = TableAttributeFreeSpace()
         |
-            e = CreateTableAttributeIsolatedLoading()
+            e = TableAttributeIsolatedLoading()
         |
-            e = CreateTableAttributeDataBlockSize()
+            e = TableAttributeDataBlockSize()
         |
-            e = CreateTableAttributeMergeBlockRatio()
+            e = TableAttributeMergeBlockRatio()
         |
-            e = CreateTableAttributeChecksum()
+            e = TableAttributeChecksum()
         |
-            e = CreateTableAttributeBlockCompression()
+            e = TableAttributeBlockCompression()
         |
-            e = CreateTableAttributeLog()
+            e = TableAttributeLog()
         |
-            e = CreateTableAttributeJournal()
+            e = TableAttributeJournal()
         ) { list.add(e); }
     )+
     { return list; }
@@ -1287,4 +1368,62 @@ SqlNode SqlSelectTopN(SqlParserPos pos) :
             SqlLiteral.createBoolean(isPercent, pos),
             SqlLiteral.createBoolean(withTies, pos));
     }
+}
+
+SqlAlter SqlAlterTable(Span s, String scope) :
+{
+     final SqlIdentifier tableName;
+     final List<SqlTableAttribute> tableAttributes;
+}
+{
+    tableName = SimpleIdentifier()
+    (
+        tableAttributes = AlterTableAttributes()
+    |
+        { tableAttributes = null; }
+    )
+    {
+        return new SqlAlterTable(getPos(), scope, tableName, tableAttributes);
+    }
+}
+
+List<SqlTableAttribute> AlterTableAttributes() :
+{
+    final List<SqlTableAttribute> list = new ArrayList<SqlTableAttribute>();
+    SqlTableAttribute e;
+    Span s;
+}
+{
+    (
+        <COMMA>
+        (
+            e = TableAttributeFallback()
+        |
+            e = TableAttributeJournalTable()
+        |
+            e = AlterTableAttributeFreeSpace()
+        |
+            e = AlterTableAttributeDataBlockSize()
+        |
+            e = TableAttributeMergeBlockRatio()
+        |
+            e = AlterTableAttributeChecksum()
+        |
+            e = TableAttributeBlockCompression()
+        |
+            e = TableAttributeLog()
+        |
+            e = TableAttributeJournal()
+        ) { list.add(e); }
+    )+
+    { return list; }
+}
+
+SqlTableAttribute AlterTableAttributeOnCommit() :
+{
+    final OnCommitType onCommitType;
+}
+{
+    onCommitType = OnCommitTypeOpt()
+    { return new SqlAlterTableAttributeOnCommit(getPos(), onCommitType); }
 }
