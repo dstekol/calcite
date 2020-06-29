@@ -1392,17 +1392,24 @@ SqlAlter SqlAlterTable(Span s, String scope) :
 {
      final SqlIdentifier tableName;
      final List<SqlTableAttribute> tableAttributes;
+     final List<SqlAlterTableOption> alterTableOptions;
 }
 {
     <TABLE>
     tableName = SimpleIdentifier()
     (
         tableAttributes = AlterTableAttributes()
+        (
+            alterTableOptions = AlterTableOptions()
+        |
+            { alterTableOptions = null; }
+        )
     |
+        alterTableOptions = AlterTableOptions()
         { tableAttributes = null; }
     )
     {
-        return new SqlAlterTable(getPos(), scope, tableName, tableAttributes);
+        return new SqlAlterTable(getPos(), scope, tableName, tableAttributes, alterTableOptions);
     }
 }
 
@@ -1459,4 +1466,94 @@ SqlTableAttribute AlterTableAttributeOnCommit() :
     )
     <ROWS>
     { return new SqlAlterTableAttributeOnCommit(getPos(), onCommitType); }
+}
+
+/**
+ * Parses a TOP N statement in a SELECT query
+ * (for example SELECT TOP 5 * FROM FOO).
+ */
+SqlNode SqlSelectTopN(SqlParserPos pos) :
+{
+    final SqlNumericLiteral selectNum;
+    final double tempNum;
+    boolean isPercent = false;
+    boolean withTies = false;
+}
+{
+    <TOP>
+    selectNum = UnsignedNumericLiteral()
+    { tempNum = selectNum.getValueAs(Double.class); }
+    [
+        <PERCENT>
+        {
+            isPercent = true;
+            if (tempNum > 100) {
+                throw SqlUtil.newContextException(getPos(),
+                    RESOURCE.numberLiteralOutOfRange(String.valueOf(tempNum)));
+            }
+        }
+    ]
+    {
+        if (tempNum != Math.floor(tempNum) && !isPercent) {
+            throw SqlUtil.newContextException(getPos(),
+                RESOURCE.integerRequiredWhenNoPercent(
+                    String.valueOf(tempNum)
+                ));
+        }
+    }
+    [
+        <WITH> <TIES> { withTies = true; }
+    ]
+    {
+        return new SqlSelectTopN(pos, selectNum,
+            SqlLiteral.createBoolean(isPercent, pos),
+            SqlLiteral.createBoolean(withTies, pos));
+    }
+}
+
+List<SqlAlterTableOption> AlterTableOptions() :
+{
+    final List<SqlAlterTableOption> alterTableOptions =
+        new ArrayList<SqlAlterTableOption>();
+    SqlAlterTableOption alterTableOption;
+}
+{
+    alterTableOption = AlterTableOption()
+    { alterTableOptions.add(alterTableOption); }
+    (
+        <COMMA>
+        alterTableOption = AlterTableOption()
+        { alterTableOptions.add(alterTableOption); }
+    )*
+    { return alterTableOptions; }
+}
+
+SqlAlterTableOption AlterTableOption() :
+{
+    final SqlAlterTableOption option;
+}
+{
+    (
+        option = AlterTableAddColumn()
+    )
+    { return option; }
+}
+
+SqlAlterTableOption AlterTableAddColumn() :
+{
+    List<SqlNode> columns = new ArrayList<SqlNode>();
+}
+{
+    <ADD>
+    (
+        ColumnWithType(columns)
+    |
+        <LPAREN>
+        ColumnWithType(columns)
+        (
+            <COMMA> ColumnWithType(columns)
+        )*
+        <RPAREN>
+    )
+    { return new SqlAlterTableAddColumn(columns); }
 }
