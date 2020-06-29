@@ -1468,6 +1468,10 @@ SqlNode SqlSelectTopN(SqlParserPos pos) :
     }
 }
 
+/**
+  * Parses a list of alter options (ex. ADD, DROP, RENAME) for
+  * ALTER TABLE queries.
+  */
 List<SqlAlterTableOption> AlterTableOptions() :
 {
     final List<SqlAlterTableOption> alterTableOptions =
@@ -1485,6 +1489,11 @@ List<SqlAlterTableOption> AlterTableOptions() :
     { return alterTableOptions; }
 }
 
+/**
+  * Parses a single alter option (ex. ADD, DROP, RENAME) for
+  * ALTER TABLE queries.
+  * Used by {@code AlterTableOptions}.
+  */
 SqlAlterTableOption AlterTableOption() :
 {
     final SqlAlterTableOption option;
@@ -1496,21 +1505,25 @@ SqlAlterTableOption AlterTableOption() :
     { return option; }
 }
 
+/**
+  * Parses an ADD column statement within an ALTER TABLE query.
+  */
 SqlAlterTableOption AlterTableAddColumn() :
 {
-    List<SqlNode> columns = new ArrayList<SqlNode>();
+    final List<SqlNode> columnList = new ArrayList<SqlNode>();
+    final SqlNodeList columns;
+    final Span s;
 }
 {
     <ADD>
     (
-        ColumnWithType(columns)
+        { s = span(); }
+        ColumnWithType(columnList)
+        {
+            columns = new SqlNodeList(columnList, s.end(this));
+        }
     |
-        <LPAREN>
-        ColumnWithType(columns)
-        (
-            <COMMA> ColumnWithType(columns)
-        )*
-        <RPAREN>
+        columns = ExtendColumnList()
     )
     { return new SqlAlterTableAddColumn(columns); }
 }
