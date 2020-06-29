@@ -1073,7 +1073,6 @@ data: {
       "parserImpls.ftl"
     ]
 
-    allowAlterTable: true
     allowUpdateFromTable: true
     allowUpsertFormOfUpdate: true
     allowAbbreviatedKeywords: true

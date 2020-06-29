@@ -355,7 +355,7 @@ SqlTableAttribute TableAttributeFreeSpace() :
 }
 
 /**
- * Parses FREESPACE attribute in ALTER queries.
+ * Parses FREESPACE attribute in ALTER TABLE queries.
  * Can either specify a value, or DEFAULT FREESPACE.
  */
 SqlTableAttribute AlterTableAttributeFreeSpace() :
@@ -473,6 +473,10 @@ SqlTableAttribute TableAttributeDataBlockSize() :
     { return new SqlTableAttributeDataBlockSize(modifier, unitSize, dataBlockSize, getPos()); }
 }
 
+/**
+ * Parses DATABLOCKSIZE attribute in ALTER TABLE queries,
+ * including IMMEDIATE option.
+ */
 SqlTableAttribute AlterTableAttributeDataBlockSize() :
 {
     DataBlockModifier modifier = null;
@@ -546,6 +550,10 @@ SqlTableAttribute TableAttributeChecksum() :
     { return new SqlTableAttributeChecksum(checksumEnabled, getPos()); }
 }
 
+/**
+ * Parses CHECKSUM attribute in ALTER TABLE queries,
+ * including IMMEDIATE option.
+ */
 SqlTableAttribute AlterTableAttributeChecksum() :
 {
     ChecksumEnabled checksumEnabled;
@@ -1370,12 +1378,16 @@ SqlNode SqlSelectTopN(SqlParserPos pos) :
     }
 }
 
+/**
+ * Parses ALTER TABLE queries.
+ */
 SqlAlter SqlAlterTable(Span s, String scope) :
 {
      final SqlIdentifier tableName;
      final List<SqlTableAttribute> tableAttributes;
 }
 {
+    <TABLE>
     tableName = SimpleIdentifier()
     (
         tableAttributes = AlterTableAttributes()
@@ -1387,6 +1399,9 @@ SqlAlter SqlAlterTable(Span s, String scope) :
     }
 }
 
+/**
+  * Parses table attributes for ALTER TABLE queries.
+  */
 List<SqlTableAttribute> AlterTableAttributes() :
 {
     final List<SqlTableAttribute> list = new ArrayList<SqlTableAttribute>();
@@ -1413,17 +1428,28 @@ List<SqlTableAttribute> AlterTableAttributes() :
         |
             e = TableAttributeLog()
         |
+            e = AlterTableAttributeOnCommit()
+        |
             e = TableAttributeJournal()
         ) { list.add(e); }
     )+
     { return list; }
 }
 
+/**
+  * Parses the ON COMMIT attribute for ALTER TABLE queries.
+  */
 SqlTableAttribute AlterTableAttributeOnCommit() :
 {
     final OnCommitType onCommitType;
 }
 {
-    onCommitType = OnCommitTypeOpt()
+    <ON> <COMMIT>
+    (
+        <PRESERVE> { onCommitType = OnCommitType.PRESERVE; }
+    |
+        <DELETE> { onCommitType = OnCommitType.DELETE; }
+    )
+    <ROWS>
     { return new SqlAlterTableAttributeOnCommit(getPos(), onCommitType); }
 }
