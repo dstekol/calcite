@@ -1349,17 +1349,24 @@ SqlAlter SqlAlterTable(Span s, String scope) :
 {
      final SqlIdentifier tableName;
      final List<SqlTableAttribute> tableAttributes;
+     final List<SqlAlterTableOption> alterTableOptions;
 }
 {
     <TABLE>
     tableName = SimpleIdentifier()
     (
         tableAttributes = AlterTableAttributes()
+        (
+            alterTableOptions = AlterTableOptions()
+        |
+            { alterTableOptions = null; }
+        )
     |
+        alterTableOptions = AlterTableOptions()
         { tableAttributes = null; }
     )
     {
-        return new SqlAlterTable(getPos(), scope, tableName, tableAttributes);
+        return new SqlAlterTable(getPos(), scope, tableName, tableAttributes, alterTableOptions);
     }
 }
 
@@ -1459,4 +1466,51 @@ SqlNode SqlSelectTopN(SqlParserPos pos) :
             SqlLiteral.createBoolean(isPercent, pos),
             SqlLiteral.createBoolean(withTies, pos));
     }
+}
+
+List<SqlAlterTableOption> AlterTableOptions() :
+{
+    final List<SqlAlterTableOption> alterTableOptions =
+        new ArrayList<SqlAlterTableOption>();
+    SqlAlterTableOption alterTableOption;
+}
+{
+    alterTableOption = AlterTableOption()
+    { alterTableOptions.add(alterTableOption); }
+    (
+        <COMMA>
+        alterTableOption = AlterTableOption()
+        { alterTableOptions.add(alterTableOption); }
+    )*
+    { return alterTableOptions; }
+}
+
+SqlAlterTableOption AlterTableOption() :
+{
+    final SqlAlterTableOption option;
+}
+{
+    (
+        option = AlterTableAddColumn()
+    )
+    { return option; }
+}
+
+SqlAlterTableOption AlterTableAddColumn() :
+{
+    List<SqlNode> columns = new ArrayList<SqlNode>();
+}
+{
+    <ADD>
+    (
+        ColumnWithType(columns)
+    |
+        <LPAREN>
+        ColumnWithType(columns)
+        (
+            <COMMA> ColumnWithType(columns)
+        )*
+        <RPAREN>
+    )
+    { return new SqlAlterTableAddColumn(columns); }
 }
