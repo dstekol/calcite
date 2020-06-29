@@ -19,6 +19,10 @@ package org.apache.calcite.sql.babel;
 
 import org.apache.calcite.sql.SqlWriter;
 
+/**
+ * A {@code SqlAlterTableOption} is an abstract class representing
+ * an option (ex. ADD, RENAME, DROP) for an ALTER TABLE query.
+ */
 public abstract class SqlAlterTableOption {
 
   public abstract void unparse(SqlWriter writer, int leftPrec, int rightPrec);

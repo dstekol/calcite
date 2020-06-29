@@ -18,15 +18,18 @@
 package org.apache.calcite.sql.babel;
 
 import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.SqlNodeList;
 import org.apache.calcite.sql.SqlWriter;
 
-import java.util.List;
-
+/**
+ * A {@code SqlAlterTableAddColumn} represents
+ * an ADD column statement within an ALTER TABLE query.
+ */
 public class SqlAlterTableAddColumn extends SqlAlterTableOption {
 
-  public final List<SqlNode> columns;
+  public final SqlNodeList columns;
 
-  public SqlAlterTableAddColumn(List<SqlNode> columns) {
+  public SqlAlterTableAddColumn(SqlNodeList columns) {
     this.columns = columns;
   }
 
