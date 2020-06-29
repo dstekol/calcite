@@ -1469,49 +1469,6 @@ SqlTableAttribute AlterTableAttributeOnCommit() :
 }
 
 /**
- * Parses a TOP N statement in a SELECT query
- * (for example SELECT TOP 5 * FROM FOO).
- */
-SqlNode SqlSelectTopN(SqlParserPos pos) :
-{
-    final SqlNumericLiteral selectNum;
-    final double tempNum;
-    boolean isPercent = false;
-    boolean withTies = false;
-}
-{
-    <TOP>
-    selectNum = UnsignedNumericLiteral()
-    { tempNum = selectNum.getValueAs(Double.class); }
-    [
-        <PERCENT>
-        {
-            isPercent = true;
-            if (tempNum > 100) {
-                throw SqlUtil.newContextException(getPos(),
-                    RESOURCE.numberLiteralOutOfRange(String.valueOf(tempNum)));
-            }
-        }
-    ]
-    {
-        if (tempNum != Math.floor(tempNum) && !isPercent) {
-            throw SqlUtil.newContextException(getPos(),
-                RESOURCE.integerRequiredWhenNoPercent(
-                    String.valueOf(tempNum)
-                ));
-        }
-    }
-    [
-        <WITH> <TIES> { withTies = true; }
-    ]
-    {
-        return new SqlSelectTopN(pos, selectNum,
-            SqlLiteral.createBoolean(isPercent, pos),
-            SqlLiteral.createBoolean(withTies, pos));
-    }
-}
-
-/**
   * Parses a list of alter options (ex. ADD, DROP, RENAME) for
   * ALTER TABLE queries.
   */
